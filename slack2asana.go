@@ -5,13 +5,34 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 )
+
+type ChannelResponse struct {
+	Ok    bool    `json:"ok"`
+	Error string  `json:"error"`
+	Channel *Channel `json:"channel"`
+}
 
 type StarsResponse struct {
 	Ok    bool    `json:"ok"`
 	Error string  `json:"error"`
 	Items []*Item `json:"items"`
+}
+
+type UserResponse struct {
+	Ok    bool   `json:"ok"`
+	Error string `json:"error"`
+	User  *User  `json:"user"`
+}
+
+type Channel struct {
+  Id string `json:"id"`
+  Name string `json:"name"`
+  IsChannel bool `json:"is_channel"`
+  IsGroup bool `json:"is_group"`
+  IsIm bool `json:"is_im"`
 }
 
 type Item struct {
@@ -28,6 +49,11 @@ type Message struct {
 	Permalink       string `json:"permalink"`
 }
 
+type User struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 func main() {
 	c := &http.Client{}
 
@@ -41,7 +67,22 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("%#v\n", item.Message)
+		fmt.Printf("%#v\n", item)
+		fmt.Printf("\t%#v\n", item.Message)
+
+    user, err := getUser(c, item.Message.User)
+    if err != nil {
+      panic(err)
+    }
+
+    fmt.Printf("\t%#v\n", user)
+
+    channel, err := getChannel(c, item.Channel)
+    if err != nil {
+      panic(err)
+    }
+
+    fmt.Printf("\t%#v\n", channel)
 	}
 }
 
@@ -71,6 +112,80 @@ func getStars(c *http.Client) ([]*Item, error) {
 	}
 
 	return stars.Items, nil
+}
+
+func getUser(c *http.Client, id string) (*User, error) {
+	u, err := url.Parse("https://slack.com/api/users.info")
+	if err != nil {
+		return nil, err
+	}
+
+	v := &url.Values{}
+	v.Add("user", id)
+	u.RawQuery = v.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	addAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	user := &UserResponse{}
+
+	err = dec.Decode(user)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.Ok {
+		return nil, errors.New(user.Error)
+	}
+
+	return user.User, nil
+}
+
+func getChannel(c *http.Client, id string) (*Channel, error) {
+	u, err := url.Parse("https://slack.com/api/conversations.info")
+	if err != nil {
+		return nil, err
+	}
+
+	v := &url.Values{}
+	v.Add("channel", id)
+	u.RawQuery = v.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	addAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	channel := &ChannelResponse{}
+
+	err = dec.Decode(channel)
+	if err != nil {
+		return nil, err
+	}
+
+	if !channel.Ok {
+		return nil, errors.New(channel.Error)
+	}
+
+	return channel.Channel, nil
 }
 
 func addAuth(req *http.Request) {
