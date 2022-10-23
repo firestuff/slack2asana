@@ -10,8 +10,8 @@ import (
 )
 
 type ChannelResponse struct {
-	Ok    bool    `json:"ok"`
-	Error string  `json:"error"`
+	Ok      bool     `json:"ok"`
+	Error   string   `json:"error"`
 	Channel *Channel `json:"channel"`
 }
 
@@ -28,11 +28,11 @@ type UserResponse struct {
 }
 
 type Channel struct {
-  Id string `json:"id"`
-  Name string `json:"name"`
-  IsChannel bool `json:"is_channel"`
-  IsGroup bool `json:"is_group"`
-  IsIm bool `json:"is_im"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	IsChannel bool   `json:"is_channel"`
+	IsGroup   bool   `json:"is_group"`
+	IsIm      bool   `json:"is_im"`
 }
 
 type Item struct {
@@ -67,22 +67,31 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("%#v\n", item)
-		fmt.Printf("\t%#v\n", item.Message)
+		user, err := getUser(c, item.Message.User)
+		if err != nil {
+			panic(err)
+		}
 
-    user, err := getUser(c, item.Message.User)
-    if err != nil {
-      panic(err)
-    }
+		channel, err := getChannel(c, item.Channel)
+		if err != nil {
+			panic(err)
+		}
 
-    fmt.Printf("\t%#v\n", user)
+		title, err := getTitle(item, user, channel)
+		if err != nil {
+			panic(err)
+		}
 
-    channel, err := getChannel(c, item.Channel)
-    if err != nil {
-      panic(err)
-    }
+		fmt.Printf("%s\n", title)
+	}
+}
 
-    fmt.Printf("\t%#v\n", channel)
+func getTitle(item *Item, user *User, channel *Channel) (string, error) {
+	switch {
+	case channel.IsIm:
+		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+	default:
+		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}
 }
 
