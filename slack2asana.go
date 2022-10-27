@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,11 @@ import (
 	"net/url"
 	"os"
 )
+
+type RemoveStarRequest struct {
+	Channel   string `json:"channel"`
+	Timestamp string `json:"timestamp"`
+}
 
 type ChannelResponse struct {
 	Ok      bool     `json:"ok"`
@@ -54,6 +60,11 @@ type User struct {
 	Name string `json:"name"`
 }
 
+type SimpleResponse struct {
+	Ok    bool   `json:"ok"`
+	Error string `json:"error"`
+}
+
 func main() {
 	c := &http.Client{}
 
@@ -83,6 +94,11 @@ func main() {
 		}
 
 		fmt.Printf("%s\n", title)
+
+		err = removeStar(c, item)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -195,6 +211,45 @@ func getChannel(c *http.Client, id string) (*Channel, error) {
 	}
 
 	return channel.Channel, nil
+}
+
+func removeStar(c *http.Client, item *Item) error {
+	body := &RemoveStarRequest{
+		Channel:   item.Channel,
+		Timestamp: item.Message.Ts,
+	}
+
+	js, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", "https://slack.com/api/stars.remove", bytes.NewReader(js))
+	if err != nil {
+		return err
+	}
+
+	addAuth(req)
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	sr := &SimpleResponse{}
+
+	err = dec.Decode(sr)
+	if err != nil {
+		return err
+	}
+
+	if !sr.Ok {
+		return errors.New(sr.Error)
+	}
+
+	return nil
 }
 
 func addAuth(req *http.Request) {
