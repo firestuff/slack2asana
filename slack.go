@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strings"
 )
 
 type SlackClient struct {
@@ -43,12 +45,18 @@ type simpleResponse struct {
 	Error string `json:"error"`
 }
 
+type Purpose struct {
+	Value string `json:"value"`
+}
+
 type Channel struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	IsChannel bool   `json:"is_channel"`
-	IsGroup   bool   `json:"is_group"`
-	IsIm      bool   `json:"is_im"`
+	Id        string   `json:"id"`
+	Name      string   `json:"name"`
+	IsChannel bool     `json:"is_channel"`
+	IsGroup   bool     `json:"is_group"`
+	IsIm      bool     `json:"is_im"`
+	IsMpIm    bool     `json:"is_mpim"`
+	Purpose   *Purpose `json:"purpose"`
 }
 
 type Item struct {
@@ -222,9 +230,23 @@ func (sc *SlackClient) GetTitle(item *Item, user *User, channel *Channel) (strin
 	switch {
 	case channel.IsIm:
 		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+	case channel.IsMpIm:
+		return fmt.Sprintf("[%s -> %s] %s", user.Name, sc.getTaggedNamesString(channel.Purpose.Value), item.Message.Text), nil
+	case channel.IsChannel:
+		return fmt.Sprintf("[%s -> #%s] %s", user.Name, channel.Name, item.Message.Text), nil
 	default:
 		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}
+}
+
+var taggedNamesRE = regexp.MustCompile(`@[a-zA-Z0-9]+[!a-zA-Z0-9]`)
+
+func (sc *SlackClient) getTaggedNames(in string) []string {
+	return taggedNamesRE.FindAllString(in, -1)
+}
+
+func (sc *SlackClient) getTaggedNamesString(in string) string {
+	return fmt.Sprintf("{%s}", strings.Join(sc.getTaggedNames(in), ","))
 }
 
 func (sc *SlackClient) addAuth(req *http.Request) {
