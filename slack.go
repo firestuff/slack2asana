@@ -308,27 +308,44 @@ func (sc *SlackClient) GetNotes(item *Item, user *User, channel *Channel) (strin
 		return "", err
 	}
 
+	link := sc.getLink(item)
+
 	switch {
 	case channel.IsIm:
 		return fmt.Sprintf(
-			`<body>%s</body>`,
+			"<body>%s\n\n<a href=\"%s\">%s</a></body>",
 			sc.escape(title),
+			sc.escape(link),
+			sc.escape(link),
 		), nil
 	case channel.IsMpIm:
 		return fmt.Sprintf(
-			"<body>%s\n\nIn %s</body>",
+			"<body>%s\n\nIn %s\n\n<a href=\"%s\">%s</a></body>",
 			sc.escape(title),
 			sc.escape(sc.getTaggedNamesString(channel.Purpose.Value)),
+			sc.escape(link),
+			sc.escape(link),
 		), nil
 	case channel.IsChannel:
 		return fmt.Sprintf(
-			"<body>%s\n\nIn #%s</body>",
+			"<body>%s\n\nIn #%s\n\n<a href=\"%s\">%s</a></body>",
 			sc.escape(title),
 			sc.escape(channel.Name),
+			sc.escape(link),
+			sc.escape(link),
 		), nil
 	default:
 		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}
+}
+
+func (sc *SlackClient) getLink(item *Item) string {
+	return fmt.Sprintf(
+		"https://%s.slack.com/archives/%s/p%s",
+		sc.team.Domain,
+		item.Channel,
+		strings.ReplaceAll(item.Message.Ts, ".", ""),
+	)
 }
 
 var taggedNamesRE = regexp.MustCompile(`@[a-zA-Z0-9]+[!a-zA-Z0-9]`)
@@ -344,6 +361,7 @@ func (sc *SlackClient) getTaggedNamesString(in string) string {
 func (sc *SlackClient) escape(in string) string {
 	in = strings.ReplaceAll(in, "<", "&lt;")
 	in = strings.ReplaceAll(in, ">", "&gt;")
+	in = strings.ReplaceAll(in, `"`, "&quot;")
 	return in
 }
 
