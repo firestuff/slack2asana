@@ -1,16 +1,32 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"time"
 )
 
 func main() {
 	ac := NewAsanaClient()
 	sc := NewSlackClient()
 
+	err := Poll(ac, sc)
+	if err != nil {
+		log.Printf("%s", err)
+	}
+
+	tick := time.NewTicker(60 * time.Second)
+
+	for {
+		<-tick.C
+
+		Poll(ac, sc)
+	}
+}
+
+func Poll(ac *AsanaClient, sc *SlackClient) error {
 	stars, err := sc.GetStars()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for _, item := range stars {
@@ -20,29 +36,31 @@ func main() {
 
 		user, err := sc.GetUser(item.Message.User)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		channel, err := sc.GetChannel(item.Channel)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		title, err := sc.GetTitle(item, user, channel)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
-		fmt.Printf("%s\n", title)
+		log.Printf("%s\n", title)
 
 		err = ac.CreateTask(title)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		err = sc.RemoveStar(item)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
+
+	return nil
 }
