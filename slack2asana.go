@@ -5,6 +5,7 @@ import (
 )
 
 func main() {
+	ac := NewAsanaClient()
 	sc := NewSlackClient()
 
 	stars, err := sc.GetStars()
@@ -33,6 +34,11 @@ func main() {
 		}
 
 		fmt.Printf("%s\n", title)
+
+		err = ac.CreateTask(title)
+		if err != nil {
+			panic(err)
+		}
 
 		err = sc.RemoveStar(item)
 		if err != nil {
