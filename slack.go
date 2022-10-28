@@ -229,24 +229,56 @@ func (sc *SlackClient) RemoveStar(item *Item) error {
 func (sc *SlackClient) GetTitle(item *Item, user *User, channel *Channel) (string, error) {
 	switch {
 	case channel.IsIm:
-		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+		return fmt.Sprintf("<%s> %s", user.Name, item.Message.Text), nil
 	case channel.IsMpIm:
-		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+		return fmt.Sprintf("<%s> %s", user.Name, item.Message.Text), nil
 	case channel.IsChannel:
-		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+		return fmt.Sprintf("<%s> %s", user.Name, item.Message.Text), nil
 	default:
 		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}
 }
 
+func (sc *SlackClient) GetTrimmedTitle(item *Item, user *User, channel *Channel) (string, error) {
+	title, err := sc.GetTitle(item, user, channel)
+	if err != nil {
+		return "", err
+	}
+
+	parts := strings.SplitN(title, "\n", 2)
+	title = parts[0]
+
+	if len(title) < 80 {
+		return title, nil
+	}
+
+	return fmt.Sprintf("%s...", title[:77]), nil
+}
+
 func (sc *SlackClient) GetNotes(item *Item, user *User, channel *Channel) (string, error) {
+	title, err := sc.GetTitle(item, user, channel)
+	if err != nil {
+		return "", err
+	}
+
 	switch {
 	case channel.IsIm:
-		return "", nil
+		return fmt.Sprintf(
+			"<body>%s</body>",
+			sc.escape(title),
+		), nil
 	case channel.IsMpIm:
-		return fmt.Sprintf("<body>In %s</body>", sc.getTaggedNamesString(channel.Purpose.Value)), nil
+		return fmt.Sprintf(
+			"<body>%s\n\nIn %s</body>",
+			sc.escape(title),
+			sc.escape(sc.getTaggedNamesString(channel.Purpose.Value)),
+		), nil
 	case channel.IsChannel:
-		return fmt.Sprintf("<body>In #%s</body>", channel.Name), nil
+		return fmt.Sprintf(
+			"<body>%s\n\nIn #%s</body>",
+			sc.escape(title),
+			sc.escape(channel.Name),
+		), nil
 	default:
 		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}
@@ -260,6 +292,12 @@ func (sc *SlackClient) getTaggedNames(in string) []string {
 
 func (sc *SlackClient) getTaggedNamesString(in string) string {
 	return fmt.Sprintf("{%s}", strings.Join(sc.getTaggedNames(in), ","))
+}
+
+func (sc *SlackClient) escape(in string) string {
+	in = strings.ReplaceAll(in, "<", "&lt;")
+	in = strings.ReplaceAll(in, ">", "&gt;")
+	return in
 }
 
 func (sc *SlackClient) addAuth(req *http.Request) {

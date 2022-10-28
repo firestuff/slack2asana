@@ -48,7 +48,7 @@ func Poll(ac *AsanaClient, sc *SlackClient) error {
 			return err
 		}
 
-		title, err := sc.GetTitle(item, user, channel)
+		title, err := sc.GetTrimmedTitle(item, user, channel)
 		if err != nil {
 			return err
 		}

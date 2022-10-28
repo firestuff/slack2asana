@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 )
@@ -69,7 +69,8 @@ func (ac *AsanaClient) CreateTask(name string, notes string) error {
 	}
 
 	if resp.StatusCode != 201 {
-		return errors.New(resp.Status)
+		msg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("%s: %s", resp.Status, msg)
 	}
 
 	return nil
