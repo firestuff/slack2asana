@@ -231,9 +231,22 @@ func (sc *SlackClient) GetTitle(item *Item, user *User, channel *Channel) (strin
 	case channel.IsIm:
 		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
 	case channel.IsMpIm:
-		return fmt.Sprintf("[%s -> %s] %s", user.Name, sc.getTaggedNamesString(channel.Purpose.Value), item.Message.Text), nil
+		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
 	case channel.IsChannel:
-		return fmt.Sprintf("[%s -> #%s] %s", user.Name, channel.Name, item.Message.Text), nil
+		return fmt.Sprintf("[%s] %s", user.Name, item.Message.Text), nil
+	default:
+		return "", fmt.Errorf("unknown channel type: %#v", channel)
+	}
+}
+
+func (sc *SlackClient) GetNotes(item *Item, user *User, channel *Channel) (string, error) {
+	switch {
+	case channel.IsIm:
+		return "", nil
+	case channel.IsMpIm:
+		return fmt.Sprintf("<body>In %s</body>", sc.getTaggedNamesString(channel.Purpose.Value)), nil
+	case channel.IsChannel:
+		return fmt.Sprintf("<body>In #%s</body>", channel.Name), nil
 	default:
 		return "", fmt.Errorf("unknown channel type: %#v", channel)
 	}

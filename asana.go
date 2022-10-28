@@ -23,6 +23,7 @@ type addTaskRequest struct {
 
 type addTaskRequestInt struct {
 	Name      string   `json:"name"`
+	HtmlNotes string   `json:"html_notes"`
 	Workspace string   `json:"workspace"`
 	Assignee  string   `json:"assignee"`
 	Projects  []string `json:"projects"`
@@ -38,10 +39,11 @@ func NewAsanaClient() *AsanaClient {
 	}
 }
 
-func (ac *AsanaClient) CreateTask(name string) error {
+func (ac *AsanaClient) CreateTask(name string, notes string) error {
 	body := &addTaskRequest{
 		Data: &addTaskRequestInt{
 			Name:      name,
+			HtmlNotes: notes,
 			Workspace: ac.workspace,
 			Assignee:  ac.assignee,
 			Projects:  []string{ac.project},

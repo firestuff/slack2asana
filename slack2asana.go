@@ -20,7 +20,10 @@ func main() {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)) * time.Second)
 
-		Poll(ac, sc)
+		err = Poll(ac, sc)
+		if err != nil {
+			log.Printf("%s", err)
+		}
 	}
 }
 
@@ -50,9 +53,14 @@ func Poll(ac *AsanaClient, sc *SlackClient) error {
 			return err
 		}
 
+		notes, err := sc.GetNotes(item, user, channel)
+		if err != nil {
+			return err
+		}
+
 		log.Printf("%s\n", title)
 
-		err = ac.CreateTask(title)
+		err = ac.CreateTask(title, notes)
 		if err != nil {
 			return err
 		}
