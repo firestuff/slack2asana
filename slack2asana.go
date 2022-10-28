@@ -10,9 +10,13 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	ac := NewAsanaClient()
-	sc := NewSlackClient()
 
-	err := Poll(ac, sc)
+	sc, err := NewSlackClient()
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	err = Poll(ac, sc)
 	if err != nil {
 		log.Printf("%s", err)
 	}

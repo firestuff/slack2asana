@@ -15,6 +15,7 @@ import (
 type SlackClient struct {
 	cli   *http.Client
 	token string
+	team  *Team
 }
 
 type removeStarRequest struct {
@@ -45,6 +46,12 @@ type simpleResponse struct {
 	Error string `json:"error"`
 }
 
+type teamResponse struct {
+	Ok    bool   `json:"ok"`
+	Error string `json:"error"`
+	Team  *Team  `json:"team"`
+}
+
 type Purpose struct {
 	Value string `json:"value"`
 }
@@ -73,16 +80,56 @@ type Message struct {
 	Permalink       string `json:"permalink"`
 }
 
+type Team struct {
+	Domain string `json:"domain"`
+}
+
 type User struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
-func NewSlackClient() *SlackClient {
-	return &SlackClient{
+func NewSlackClient() (*SlackClient, error) {
+	sc := &SlackClient{
 		cli:   &http.Client{},
 		token: os.Getenv("SLACK_TOKEN"),
 	}
+
+	team, err := sc.GetTeam()
+	if err != nil {
+		return nil, err
+	}
+
+	sc.team = team
+	return sc, nil
+}
+
+func (sc *SlackClient) GetTeam() (*Team, error) {
+	req, err := http.NewRequest("GET", "https://slack.com/api/team.info", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	sc.addAuth(req)
+
+	resp, err := sc.cli.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	team := &teamResponse{}
+
+	err = dec.Decode(team)
+	if err != nil {
+		return nil, err
+	}
+
+	if !team.Ok {
+		return nil, errors.New(team.Error)
+	}
+
+	return team.Team, nil
 }
 
 func (sc *SlackClient) GetStars() ([]*Item, error) {
@@ -264,7 +311,7 @@ func (sc *SlackClient) GetNotes(item *Item, user *User, channel *Channel) (strin
 	switch {
 	case channel.IsIm:
 		return fmt.Sprintf(
-			"<body>%s</body>",
+			`<body>%s</body>`,
 			sc.escape(title),
 		), nil
 	case channel.IsMpIm:
