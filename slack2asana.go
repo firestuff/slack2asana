@@ -2,10 +2,13 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"time"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	ac := NewAsanaClient()
 	sc := NewSlackClient()
 
@@ -14,10 +17,8 @@ func main() {
 		log.Printf("%s", err)
 	}
 
-	tick := time.NewTicker(60 * time.Second)
-
 	for {
-		<-tick.C
+		time.Sleep(time.Duration(rand.Intn(60)) * time.Second)
 
 		Poll(ac, sc)
 	}
